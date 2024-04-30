@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 
 const userSchema = mongoose.Schema({
+    user_id:{
+        type: String,
+        required: true,
+    },
     username:{
         type: String,
         required: true,
@@ -16,11 +20,9 @@ const userSchema = mongoose.Schema({
     },
     password:{
         type: String,
-        required: true,
-        min: 6,
     },
     profile_url: {
-        type: string,
+        type: String,
     }
 });
 
