@@ -24,6 +24,10 @@ router.post('/sign_up', async (req, res) => {
             if (!username || !email || !password || !againPassword) {
                 return res.status(400).json({ message: "Enter all the required fields" });
             }
+            const isUserFound = await User.findOne({ email });
+            if (isUserFound) {
+                return res.status(400).json({ message: "User Already exists" });
+            }
             if (password !== againPassword) {
                 return res.status(400).json({ message: "Passwords didn't match" });
             }
@@ -67,7 +71,8 @@ router.post('/login', async (req, res) => {
                 return res.status(401).json({ message: 'Invalid Email or password' });
             }
             console.log("yaha takk toh theek hai");
-            const isPasswordCorrect = bcrypt.compare(password, user.password);
+            const isPasswordCorrect = await bcrypt.compare(password, user.password);
+            console.log(isPasswordCorrect);
             if (!isPasswordCorrect) {
                 return res.status(401).json({ message: 'Invalid Email or password' });
             }
