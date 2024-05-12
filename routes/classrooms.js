@@ -197,12 +197,27 @@ router.post("/get_classroom_by_id", async function (req, res) {
       console.log("error in authenticating user", err);
    }
    try {
+      user_id = req.body.user_id;
       const user = await User.findOne({ user_id: user_id });
       if (!user) {
          return res.status(404).json({ ok: false, msg: "User not found" });
       }
-      const classrooms = await Classroom.find({ created_by: user._id });
-      return res.status(200).json({ ok: true, data: classrooms });
+      const classrooms = await Classroom.find({ created_by: user._id }).populate({
+         path : "created_by",
+         select : `username email user_id profile_url`
+      }).exec();
+      const joined_classrooms = await classUser.find({member_id : user._id}).populate({
+         path : "classroom_id",
+         select : `classroom_id classroom_name classroom_section classroom_background_url created_by`,
+         populate : {
+            path : "created_by",
+            select : `username email user_id profile_url`
+         }
+      });
+      return res.status(200).json({ ok: true, data: {
+         classrooms: classrooms,
+         joined_classrooms: joined_classrooms,
+      } });
    } catch (err) {
       console.error(err);
       return res.status(500).json({ ok: false, msg: "Internal server error" });
