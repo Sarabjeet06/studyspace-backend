@@ -2,6 +2,7 @@ import express from "express";
 import User from "../models/user.js";
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
@@ -18,7 +19,8 @@ router.post('/sign_up', async (req, res) => {
             const user = new User({ username, email, user_id, profile_url });
             await user.save();
             console.log("success");
-            return res.status(201).json({ message: "User created successfully" });
+            const hashToken = jwt.sign({ userId: user_id }, process.env.JWT_SECRET_KEY);
+            return res.status(201).json({ message: "User created successfully", token: hashToken });
         } else {
             const { username, email, password, againPassword } = req.body;
             if (!username || !email || !password || !againPassword) {
@@ -37,10 +39,9 @@ router.post('/sign_up', async (req, res) => {
                 const user = new User({ username, email, password: hash, user_id });
                 await user.save();
                 console.log(user);
+                const hashToken = jwt.sign({ userId: user_id }, process.env.JWT_SECRET_KEY);
                 return res.status(201).json({
-                    message: "user successfullly created", user: {
-                        _id: user._id
-                    }
+                    message: "user successfullly created", token: hashToken
                 });
             });
         }
@@ -55,11 +56,13 @@ router.post('/login', async (req, res) => {
     try {
         if (req.body.google_id) {
             const { email } = req.body;
-            const isUserFound = await User.find({email});
-            if(!isUserFound){
-                return res.status(400).json({message: "You need to sign up first!"});
+            const isUserFound = await User.find({ email });
+            if (!isUserFound) {
+                return res.status(400).json({ message: "You need to sign up first!" });
             }
-            return res.status(201).json({message: "login successfull"})
+            console.log(isUserFound);
+            const hashToken = jwt.sign({ userId: isUserFound[0].user_id }, process.env.JWT_SECRET_KEY);
+            return res.status(201).json({ message: "login successfull", data: { hashToken, user: isUserFound } });
         } else {
             const { email, password } = req.body;
             if (!email || !password) {
@@ -70,13 +73,15 @@ router.post('/login', async (req, res) => {
                 console.log("user nhi hai bhai")
                 return res.status(401).json({ message: 'Invalid Email or password' });
             }
+            console.log(user);
             console.log("yaha takk toh theek hai");
             const isPasswordCorrect = await bcrypt.compare(password, user.password);
             console.log(isPasswordCorrect);
             if (!isPasswordCorrect) {
                 return res.status(401).json({ message: 'Invalid Email or password' });
             }
-            return res.status(200).json({ message: "login successful", user });
+            const hashToken = jwt.sign({ userId: user.user_id }, process.env.JWT_SECRET_KEY);
+            return res.status(200).json({ message: "login successful", data: { hashToken, user: isUserFound } });
         }
 
     } catch (error) {
