@@ -6,6 +6,11 @@ import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
+export const getUserIdFromToken = (token) => {
+    var decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    return decoded.userId;
+  };
+
 router.post('/sign_up', async (req, res) => {
     console.log("backend me aa gaya bro");
     try {
@@ -89,5 +94,30 @@ router.post('/login', async (req, res) => {
         return res.status(500).json({ message: error });
     }
 });
+
+// get user by session
+router.post('/get_user' , async (req , res)=>{
+    var user_id = null;
+    try {
+      user_id = getUserIdFromToken(
+        req.headers["authorization"].replace("Bearer ", "")
+      );
+    } catch(err) {
+      return res.status(401).json({
+        ok: false,
+        msg: "Token is malformed or expired",
+      });
+    }
+    try{
+        const user = await User.findOne({user_id : user_id});
+        if(!user){
+            return res.status(404).json({message : "User not found"});
+        }
+        return res.status(200).json({message : "User found", data : user});
+    }catch(err){
+        console.log(err);
+        return res.status(500).json({message : "Internal server error"});
+    }
+})
 
 export default router;

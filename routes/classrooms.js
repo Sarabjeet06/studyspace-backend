@@ -10,44 +10,46 @@ import { sendInviteMail } from "../utils/emailtemplates/invite.js";
 import classUser from "../models/class_user.js";
 import { delete_files_from_upload } from "../utils/clearUploadFolder.js";
 import { read_csv_file } from "../utils/readCsvData.js";
+import { getUserIdFromToken } from "./users.js";
 const router = express.Router();
 
-export const sendInvitationEmail = async (email , classroom_id  , classroom_name , new_user = true) => {
+export const sendInvitationEmail = async (email, classroom_id, classroom_name, new_user = true) => {
    try {
-       const transporter = nodemailer.createTransport({
-           service: "gmail",
-           host: "smtp.gmail.com",
-           port: 465,
-           secure: true,
-           auth: {
-               user: "studyspace39@gmail.com",
-               pass: process.env.NODEMAILER_PASSWORD,
-           },
-       });
-       const mailOptions = {
-           from: "studyspace39@gmail.com",
-           to: email,
-           subject: "Invitation to join space",
-           html: sendInviteMail(
-               classroom_id,
-               process.env.FRONTEND_URL,
-               new_user,
-               classroom_name
-           ),
-       };
+      const transporter = nodemailer.createTransport({
+         service: "gmail",
+         host: "smtp.gmail.com",
+         port: 465,
+         secure: true,
+         auth: {
+            user: "studyspace39@gmail.com",
+            pass: process.env.NODEMAILER_PASSWORD,
+         },
+      });
+      const mailOptions = {
+         from: "studyspace39@gmail.com",
+         to: email,
+         subject: "Invitation to join space",
+         html: sendInviteMail(classroom_id, process.env.FRONTEND_URL, new_user, classroom_name),
+      };
 
-       await transporter.sendMail(mailOptions);
-       console.log(`Invitation email sent to ${email}`);
+      await transporter.sendMail(mailOptions);
+      console.log(`Invitation email sent to ${email}`);
    } catch (error) {
-       console.error(`Error sending invitation email to ${email}: ${error}`);
+      console.error(`Error sending invitation email to ${email}: ${error}`);
    }
 };
 
 router.post("/create_class", upload.single("file"), async (req, res) => {
    var user_id = null;
    try {
-   } catch (err) {
-      console.log("error in authenticating user", err);
+     user_id = getUserIdFromToken(
+       req.headers["authorization"].replace("Bearer ", "")
+     );
+   } catch(err) {
+     return res.status(401).json({
+       ok: false,
+       msg: "Token is malformed or expired",
+     });
    }
    try {
       const { name, section } = req.body;
@@ -74,16 +76,19 @@ router.post("/create_class", upload.single("file"), async (req, res) => {
    } catch (err) {
       console.error(err);
    }
-   //     finally {
-   //       await delete_files_from_upload();
-   //    }
 });
 
 router.post("/email_invite", upload.single("file"), async (req, res) => {
    var user_id = null;
    try {
-   } catch (err) {
-      console.log("error in authenticating user", err);
+     user_id = getUserIdFromToken(
+       req.headers["authorization"].replace("Bearer ", "")
+     );
+   } catch(err) {
+     return res.status(401).json({
+       ok: false,
+       msg: "Token is malformed or expired",
+     });
    }
    try {
       const { email, classroom_id } = req.body;
@@ -94,14 +99,23 @@ router.post("/email_invite", upload.single("file"), async (req, res) => {
 
       if (file) {
          const file_data = await read_csv_file(file.path);
-         if(file_data === null){
+         if (file_data === null) {
             return res.status(404).json({ ok: false, msg: "File not found" });
          }
          const classroom = await Classroom.findOne({ classroom_id: classroom_id });
          if (!classroom) {
             return res.status(404).json({ ok: false, msg: "Classroom not found" });
          }
-         await Promise.all(file_data.map(user => sendInvitationEmail(user?.email  , classroom_id , classroom?.classroom_name , user?.new_user)));
+         await Promise.all(
+            file_data.map((user) =>
+               sendInvitationEmail(
+                  user?.email,
+                  classroom_id,
+                  classroom?.classroom_name,
+                  user?.new_user
+               )
+            )
+         );
       } else {
          var new_user = false;
          const user = await User.findOne({ email: email });
@@ -155,8 +169,14 @@ router.post("/email_invite", upload.single("file"), async (req, res) => {
 router.post("/join_class", async (req, res) => {
    var user_id = null;
    try {
-   } catch (err) {
-      console.log("error in authenticating user", err);
+     user_id = getUserIdFromToken(
+       req.headers["authorization"].replace("Bearer ", "")
+     );
+   } catch(err) {
+     return res.status(401).json({
+       ok: false,
+       msg: "Token is malformed or expired",
+     });
    }
    try {
       const { classroom_id, email } = req.body;
@@ -193,35 +213,144 @@ router.post("/join_class", async (req, res) => {
 router.post("/get_classroom_by_id", async function (req, res) {
    var user_id = null;
    try {
+      user_id = getUserIdFromToken(req.headers["authorization"].replace("Bearer ", ""));
    } catch (err) {
-      console.log("error in authenticating user", err);
+      return res.status(401).json({
+         ok: false,
+         msg: "Token is malformed or expired",
+      });
    }
    try {
-      user_id = req.body.user_id;
       const user = await User.findOne({ user_id: user_id });
       if (!user) {
          return res.status(404).json({ ok: false, msg: "User not found" });
       }
-      const classrooms = await Classroom.find({ created_by: user._id }).populate({
-         path : "created_by",
-         select : `username email user_id profile_url`
-      }).exec();
-      const joined_classrooms = await classUser.find({member_id : user._id}).populate({
-         path : "classroom_id",
-         select : `classroom_id classroom_name classroom_section classroom_background_url created_by`,
-         populate : {
-            path : "created_by",
-            select : `username email user_id profile_url`
-         }
+
+      const classrooms = await Classroom.find({ created_by: user._id })
+         .populate({
+            path: "created_by",
+            select: `username email user_id profile_url`,
+         })
+         .exec();
+
+      const joined_classrooms = await classUser
+         .find({ member_id: user._id })
+         .populate({
+            path: "classroom_id",
+            select: `classroom_id classroom_name classroom_section classroom_background_url created_by`,
+            populate: {
+               path: "created_by",
+               select: `username email user_id profile_url`,
+            },
+         })
+         .exec();
+
+      // Transform the classrooms data to have a consistent structure
+      const transformedClassrooms = classrooms.map((classroom) => ({
+         _id: classroom._id,
+         classroom_id: classroom.classroom_id,
+         classroom_name: classroom.classroom_name,
+         classroom_section: classroom.classroom_section,
+         classroom_background_url: classroom.classroom_background_url,
+         created_by: classroom.created_by,
+         member_id: classroom.created_by._id, // add this line to make it similar
+         created_on: classroom.created_on,
+         __v: classroom.__v,
+      }));
+
+      // Transform the joined classrooms data to have a consistent structure
+      const transformedJoinedClassrooms = joined_classrooms.map((joinedClassroom) => ({
+         _id: joinedClassroom._id,
+         classroom_id: joinedClassroom.classroom_id._id,
+         classroom_name: joinedClassroom.classroom_id.classroom_name,
+         classroom_section: joinedClassroom.classroom_id.classroom_section,
+         classroom_background_url: joinedClassroom.classroom_id.classroom_background_url,
+         created_by: joinedClassroom.classroom_id.created_by,
+         member_id: joinedClassroom.member_id,
+         created_on: joinedClassroom.created_on,
+         __v: joinedClassroom.__v,
+      }));
+
+      return res.status(200).json({
+         ok: true,
+         data: {
+            classrooms: transformedClassrooms,
+            joined_classrooms: transformedJoinedClassrooms,
+         },
       });
-      return res.status(200).json({ ok: true, data: {
-         classrooms: classrooms,
-         joined_classrooms: joined_classrooms,
-      } });
    } catch (err) {
       console.error(err);
       return res.status(500).json({ ok: false, msg: "Internal server error" });
    }
 });
+
+router.delete("/delete_class", async function (req, res) {
+   var user_id = null;
+   try {
+     user_id = getUserIdFromToken(
+       req.headers["authorization"].replace("Bearer ", "")
+     );
+   } catch(err) {
+     return res.status(401).json({
+       ok: false,
+       msg: "Token is malformed or expired",
+     });
+   }
+   try {
+      const classId = req.query.classId;
+      const deletedClass = await Classroom.findOne({ classroom_id: classId });
+
+      if (!deletedClass) {
+         return res.status(404).json({ ok: false, msg: "Class not found" });
+      }
+
+      // Delete the class
+      await Classroom.findByIdAndDelete(deletedClass._id);
+
+      // Delete associated classUser documents
+      await classUser.deleteMany({ classroom_id: deletedClass._id });
+
+      return res.status(200).json({ ok: true, msg: "Class deleted successfully" });
+   } catch (err) {
+      console.error(err);
+      return res.status(500).json({ ok: false, msg: "Internal server error" });
+   }
+});
+
+router.post("/toggle_archived", async (req, res) => {
+   let user_id;
+   try {
+     user_id = getUserIdFromToken(
+       req.headers["authorization"].replace("Bearer ", "")
+     );
+   } catch (err) {
+     return res.status(401).json({
+       ok: false,
+       msg: "Token is malformed or expired",
+     });
+   }
+ 
+   const { classId, archived } = req.body;
+ 
+   try {
+     const classroom = await Classroom.findOne({ classroom_id: classId });
+ 
+     if (!classroom) {
+       return res.status(404).json({ ok: false, msg: "Classroom not found" });
+     }
+ 
+     if (classroom.created_by.toString() !== user_id) {
+       return res.status(403).json({ ok: false, msg: "Unauthorized" });
+     }
+ 
+     classroom.archived = archived;
+     await classroom.save();
+ 
+     return res.status(200).json({ ok: true, msg: "Classroom archived status updated successfully", classroom });
+   } catch (err) {
+     console.error(err);
+     return res.status(500).json({ ok: false, msg: "Internal server error" });
+   }
+ });
 
 export default router;
