@@ -237,7 +237,7 @@ router.post("/get_classroom_by_id", async function (req, res) {
          .find({ member_id: user._id })
          .populate({
             path: "classroom_id",
-            select: `classroom_id classroom_name classroom_section classroom_background_url created_by`,
+            select: `classroom_id classroom_name classroom_section classroom_background_url created_by archived`,
             populate: {
                path: "created_by",
                select: `username email user_id profile_url`,
@@ -255,19 +255,21 @@ router.post("/get_classroom_by_id", async function (req, res) {
          created_by: classroom.created_by,
          member_id: classroom.created_by._id, // add this line to make it similar
          created_on: classroom.created_on,
+         archived : classroom.archived,
          __v: classroom.__v,
       }));
 
       // Transform the joined classrooms data to have a consistent structure
       const transformedJoinedClassrooms = joined_classrooms.map((joinedClassroom) => ({
          _id: joinedClassroom._id,
-         classroom_id: joinedClassroom.classroom_id._id,
+         classroom_id: joinedClassroom.classroom_id.classroom_id,
          classroom_name: joinedClassroom.classroom_id.classroom_name,
          classroom_section: joinedClassroom.classroom_id.classroom_section,
          classroom_background_url: joinedClassroom.classroom_id.classroom_background_url,
          created_by: joinedClassroom.classroom_id.created_by,
          member_id: joinedClassroom.member_id,
          created_on: joinedClassroom.created_on,
+         archived  : joinedClassroom.classroom_id.archived,
          __v: joinedClassroom.__v,
       }));
 
@@ -338,12 +340,9 @@ router.post("/toggle_archived", async (req, res) => {
      if (!classroom) {
        return res.status(404).json({ ok: false, msg: "Classroom not found" });
      }
+
  
-     if (classroom.created_by.toString() !== user_id) {
-       return res.status(403).json({ ok: false, msg: "Unauthorized" });
-     }
- 
-     classroom.archived = archived;
+     classroom.archived = !archived;
      await classroom.save();
  
      return res.status(200).json({ ok: true, msg: "Classroom archived status updated successfully", classroom });
