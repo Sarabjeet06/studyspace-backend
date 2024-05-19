@@ -189,10 +189,10 @@ router.post("/join_class", async (req, res) => {
       const user = await User.findOne({
          email: email,
       });
-      if (!user) {
+      if (user?.length === 0) {
          return res.status(404).json({ ok: false, msg: "User not found" });
       }
-      const class_member = await classUser.findOne({ member_id: user._id });
+      const class_member = await classUser.findOne({ member_id: user._id  , classroom_id : classroom._id});
       if (class_member) {
          return res.status(404).json({ ok: false, msg: "User already a member" });
       }
