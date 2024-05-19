@@ -4,6 +4,7 @@ import 'dotenv/config';
 import { connectToDb } from "./utils/dbConnect.js";
 import usersroute from "./routes/users.js"
 import classroomsroute from "./routes/classrooms.js"
+import membersroute from "./routes/members.js"
 
 const app=express();
 const port = 3001;
@@ -14,7 +15,7 @@ connectToDb();
 
 app.use("/api/users",usersroute);
 app.use("/api/classrooms",classroomsroute);
-
+app.use("/api/members" , membersroute);
 app.listen(port, ()=>{
     console.log(`The server is running on port ${port}`);
 });
