@@ -56,11 +56,12 @@ router.post("/create_class", upload.single("file"), async (req, res) => {
       // temporarily for new instead of jwt
       user_id = req.body.user_id;
       var file = req.file;
+      var uploaded_file_url;
       const already_user = await User.findOne({ user_id: user_id });
       if (!already_user) {
          return res.status(404).json({ ok: false, msg: "User not found" });
       }
-      const uploaded_file_url = await uploadOnCloudinary(file.path);
+      if(file) uploaded_file_url = await uploadOnCloudinary(file.path);
       var new_class = {
          classroom_id: Date.now().toString().substring(6),
          classroom_name: name,
