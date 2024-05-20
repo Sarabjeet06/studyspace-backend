@@ -1,10 +1,12 @@
 import express from 'express';
-import { getUserIdFromToken } from './users';
-import AssignmentSubmission from '../models/submission';
-import { upload } from '../middlewares/multer.middleware';
-import User from '../models/user';
-import Classroom from '../models/classroom';
-import Assignment from '../models/assignment';
+import { getUserIdFromToken } from './users.js';
+import AssignmentSubmission from '../models/submission.js';
+import { upload } from '../middlewares/multer.middleware.js';
+import User from '../models/user.js';
+import Classroom from '../models/classroom.js';
+import Assignment from '../models/assignment.js';
+import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import { delete_files_from_upload } from '../utils/clearUploadFolder.js';
 
 const router = express.Router();
 
@@ -56,6 +58,8 @@ router.post('/submissions',upload.single('file'),   async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
+  }finally{
+      delete_files_from_upload();
   }
 });
 
@@ -63,7 +67,7 @@ router.post('/submissions',upload.single('file'),   async (req, res) => {
 router.get('/submissions/assignment/:assignment_id', async (req, res) => {
   try {
     const submissions = await AssignmentSubmission.find({ assignment_id: req.params.assignment_id })
-      .populate('user_id', 'username email')
+      .populate('user_id', 'username email profile_url')
       .populate('assignment_id', 'heading description');
     res.status(200).json({ ok: true, data: submissions });
   } catch (error) {
@@ -120,5 +124,44 @@ router.delete('/submissions/:submission_id', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+router.get('/submissions/classroom/:classroom_id', async (req, res) => {
+      let user_id = null;
+      try {
+        user_id = getUserIdFromToken(req.headers["authorization"].replace("Bearer ", ""));
+      } catch (err) {
+        return res.status(401).json({
+          ok: false,
+          msg: "Token is malformed or expired",
+        });
+      }
+    
+      try {
+        const { classroom_id } = req.params;
+        const classroom = await Classroom.findOne({ classroom_id });
+        if (!classroom) {
+          return res.status(404).json({ message: "Classroom not found" });
+        }
+    
+        const assignments = await Assignment.find({ classroom_id: classroom.classroom_id });
+    
+        const allSubmissions = await Promise.all(assignments.map(async (assignment) => {
+          const submissions = await AssignmentSubmission.find({ assignment_id: assignment._id })
+            .populate('user_id', 'username email profile_url')
+            .populate('assignment_id', 'heading description');
+          return {
+            assignment_id: assignment._id,
+            assignment_heading: assignment.heading,
+            submissions: submissions,
+          };
+        }));
+    
+        res.status(200).json({ ok: true, data: allSubmissions });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
+      }
+    });
+    
 
 export default router;

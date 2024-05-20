@@ -194,7 +194,7 @@ router.post("/join_class", async (req, res) => {
          return res.status(404).json({ ok: false, msg: "User not found" });
       }
       const class_member = await classUser.findOne({ member_id: user._id  , classroom_id : classroom._id});
-      if (!class_member) {
+      if (class_member) {
          return res.status(404).json({ ok: false, msg: "User already a member" });
       }
       const new_memeber = {
