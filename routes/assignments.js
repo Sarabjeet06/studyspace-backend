@@ -6,6 +6,8 @@ import nodemailer from "nodemailer";
 import classUser from "../models/class_user.js";
 import { sendAssignmentNotificationMail } from "../utils/emailtemplates/assignment_invite.js";
 import { getUserIdFromToken } from "./users.js";
+import AssignmentSubmission from "../models/submission.js";
+import User from "../models/user.js";
 
 const router=express.Router();
 
@@ -77,25 +79,39 @@ router.post("/add_assignment",async (req,res)=>{
     }
 });
 
-router.get("/getAssignment", async (req,res) =>{
-    var user_id = null;
-    try {
-       user_id = getUserIdFromToken(req.headers["authorization"].replace("Bearer ", ""));
-    } catch (err) {
-       return res.status(401).json({
-          ok: false,
-          msg: "Token is malformed or expired",
+router.get("/getAssignment", async (req, res) => {
+   let user_id = null;
+   try {
+     user_id = getUserIdFromToken(req.headers["authorization"].replace("Bearer ", ""));
+   } catch (err) {
+     return res.status(401).json({
+       ok: false,
+       msg: "Token is malformed or expired",
+     });
+   }
+ 
+   try {
+     const { classroom_id } = req.query;
+     const assignments = await Assignment.find({ classroom_id: classroom_id });
+     
+     const assignmentsWithSubmissionStatus = await Promise.all(assignments.map(async (assignment) => {
+      const already_user = await User.findOne({user_id  : user_id});
+       const submission = await AssignmentSubmission.findOne({
+         assignment_id: assignment._id,
+         user_id: already_user._id,
        });
-    }
-    try{
-        const {classroom_id} = req.query;
-        const assignments=await Assignment.find({classroom_id : classroom_id});
-        return res.status(200).json(assignments);
-    }catch(error){
-        console.log(error);
-        return res.status(500).send({message: error});
-    }
-});
+       return {
+         ...assignment.toObject(),
+         submitted: submission ? true : false,
+       };
+     }));
+ 
+     return res.status(200).json({ ok: true, data: assignmentsWithSubmissionStatus });
+   } catch (error) {
+     console.log(error);
+     return res.status(500).send({ message: error });
+   }
+ });
 
 router.delete("/deleteAssignment/:id", async (req,res) =>{
     var user_id = null;

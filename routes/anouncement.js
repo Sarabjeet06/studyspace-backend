@@ -1,6 +1,7 @@
 import express from 'express';
 import { getUserIdFromToken } from './users.js';
 import ClassroomAnnouncement from '../models/classroom_anouncement.js';
+import User from '../models/user.js';
 const router = express.Router();
 router.post('/add_announcement', async (req, res) => {
       var user_id = null;
@@ -14,10 +15,15 @@ router.post('/add_announcement', async (req, res) => {
       }
   const { classroom_id, description, link_url } = req.body;
   try {
+    const already_user = await User.findOne({user_id : user_id});
+    if(!already_user){
+      return res.status(404).json({ ok: false, msg: "User not found" });
+    }
     const newAnnouncement = new ClassroomAnnouncement({
       classroom_id,
       description,
       link_url,
+      created_by: already_user._id,
     });
     await newAnnouncement.save();
     res.status(201).json({ok : true , data : newAnnouncement});
@@ -38,7 +44,8 @@ router.get('/announcements/:classroom_id', async (req, res) => {
          });
       }
   try {
-    const announcements = await ClassroomAnnouncement.find({ classroom_id: req.params.classroom_id });
+    const announcements = await ClassroomAnnouncement.find({ classroom_id: req.params.classroom_id })
+    .populate('created_by', 'username email profile_url'); ;
     res.status(200).json({ok : true , data : announcements});
   } catch (error) {
     console.error(error);
