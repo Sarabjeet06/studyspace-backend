@@ -18,7 +18,6 @@ export async function delete_files_from_upload() {
               await fs.promises.unlink(filePath);
           }
           
-          console.log('Files deleted successfully.');
       } catch (err) {
           console.error('Error deleting files:', err);
       }

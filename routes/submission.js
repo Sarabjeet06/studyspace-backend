@@ -111,6 +111,60 @@ router.put('/submissions/:submission_id', async (req, res) => {
   }
 });
 
+router.post('/save_result', async (req, res) => {
+  let user_id = null;
+  try {
+    user_id = getUserIdFromToken(req.headers["authorization"].replace("Bearer ", ""));
+  } catch (err) {
+    return res.status(401).json({
+      ok: false,
+      msg: "Token is malformed or expired",
+    });
+  }
+
+  try {
+    const { data } = req.body;
+    if (!Array.isArray(data) || data.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        msg: "Invalid data format",
+      });
+    }
+
+    // Iterate through the students
+    for (let student of data) {
+      const { assignments } = student;
+      if (typeof assignments !== 'object' || assignments === null) {
+        continue; // Skip if there are no assignments for this student
+      }
+
+      // Iterate through each assignment of the student
+      for (let assignmentId in assignments) {
+        const { submission_id, point_given } = assignments[assignmentId];
+        if (!submission_id) {
+          return res.status(400).json({
+            ok: false,
+            msg: "Invalid submission data",
+          });
+        }
+
+        var update_point = parseInt(point_given , 10);
+
+        // Update the submission
+        await AssignmentSubmission.findOneAndUpdate(
+          { submission_id },
+          { $set: { point_given :  update_point } },
+        );
+      }
+    }
+
+    res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Delete a specific submission by ID
 router.delete('/submissions/:submission_id', async (req, res) => {
   try {

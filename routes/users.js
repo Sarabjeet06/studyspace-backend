@@ -12,7 +12,6 @@ export const getUserIdFromToken = (token) => {
   };
 
 router.post('/sign_up', async (req, res) => {
-    console.log("backend me aa gaya bro");
     try {
         if (req.body.google_id) {
             const { email, username, profile_url } = req.body;
@@ -23,7 +22,6 @@ router.post('/sign_up', async (req, res) => {
             const user_id = Date.now().toString().substring(6);
             const user = new User({ username, email, user_id, profile_url });
             await user.save();
-            console.log("success");
             const hashToken = jwt.sign({ userId: user_id }, process.env.JWT_SECRET_KEY);
             return res.status(201).json({ message: "User created successfully", token: hashToken });
         } else {
@@ -43,7 +41,6 @@ router.post('/sign_up', async (req, res) => {
             bcrypt.hash(password, saltRounds, async function (err, hash) {
                 const user = new User({ username, email, password: hash, user_id });
                 await user.save();
-                console.log(user);
                 const hashToken = jwt.sign({ userId: user_id }, process.env.JWT_SECRET_KEY);
                 return res.status(201).json({
                     message: "user successfullly created", token: hashToken
@@ -57,7 +54,6 @@ router.post('/sign_up', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-    console.log("backend me aa gaya bro");
     try {
         if (req.body.google_id) {
             const { email } = req.body;
@@ -65,7 +61,6 @@ router.post('/login', async (req, res) => {
             if (!isUserFound) {
                 return res.status(400).json({ message: "You need to sign up first!" });
             }
-            console.log(isUserFound);
             const hashToken = jwt.sign({ userId: isUserFound[0].user_id }, process.env.JWT_SECRET_KEY);
             return res.status(201).json({ message: "login successfull", data: { hashToken, user: isUserFound } });
         } else {
@@ -75,13 +70,9 @@ router.post('/login', async (req, res) => {
             }
             const user = await User.findOne({ email: email });
             if (!user) {
-                console.log("user nhi hai bhai")
                 return res.status(401).json({ message: 'Invalid Email or password' });
             }
-            console.log(user);
-            console.log("yaha takk toh theek hai");
             const isPasswordCorrect = await bcrypt.compare(password, user.password);
-            console.log(isPasswordCorrect);
             if (!isPasswordCorrect) {
                 return res.status(401).json({ message: 'Invalid Email or password' });
             }

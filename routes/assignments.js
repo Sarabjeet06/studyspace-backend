@@ -20,12 +20,12 @@ const sendInvitationEmail = async (email , assignment, classroom_id ,  url , cla
           port: 465,
           secure: true,
           auth: {
-             user: "studyspace39@gmail.com",
+             user: process.env.EMAIL_URL,
              pass: process.env.NODEMAILER_PASSWORD,
           },
        });
        const mailOptions = {
-          from: "studyspace39@gmail.com",
+          from: process.env.EMAIL_URL,
           to: email,
           subject: "New Assignment Notification",
           html: sendAssignmentNotificationMail(assignment, classroom_id ,  url ,classroom_name),

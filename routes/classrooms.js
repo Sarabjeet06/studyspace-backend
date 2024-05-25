@@ -21,19 +21,18 @@ export const sendInvitationEmail = async (email, classroom_id, classroom_name, n
          port: 465,
          secure: true,
          auth: {
-            user: "studyspace39@gmail.com",
+            user: process.env.EMAIL_URL,
             pass: process.env.NODEMAILER_PASSWORD,
          },
       });
       const mailOptions = {
-         from: "studyspace39@gmail.com",
+         from: process.env.EMAIL_URL,
          to: email,
          subject: "Invitation to join space",
          html: sendInviteMail(classroom_id, process.env.FRONTEND_URL, new_user, classroom_name),
       };
 
       await transporter.sendMail(mailOptions);
-      console.log(`Invitation email sent to ${email}`);
    } catch (error) {
       console.error(`Error sending invitation email to ${email}: ${error}`);
    }
@@ -135,12 +134,12 @@ router.post("/email_invite", upload.single("file"), async (req, res) => {
             port: 465,
             secure: true,
             auth: {
-               user: "studyspace39@gmail.com",
+               user: process.env.EMAIL_URL,
                pass: process.env.NODEMAILER_PASSWORD,
             },
          });
          const mailOptions = {
-            from: "studyspace39@gmail.com",
+            from: process.env.EMAIL_URL,
             to: email,
             subject: "Invitation to join space",
             html: sendInviteMail(
