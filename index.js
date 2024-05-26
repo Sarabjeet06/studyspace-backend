@@ -12,7 +12,12 @@ import submitroute from "./routes/submission.js";
 const app=express();
 const port = 3001;
 
-app.use(cors());
+var corsOptions = {
+    origin: ['http://localhost:3000/' , 'https://studyspace-frontend.vercel.app/'],
+    optionsSuccessStatus: 200
+}
+app.use(cors(corsOptions))
+
 app.use(express.json());
 connectToDb();
 
