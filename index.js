@@ -23,6 +23,11 @@ app.use("/api/quizes",quizesroute);
 app.use("/api/anouncements" , announcementsroute);
 app.use("/api/members" , membersroute);
 app.use('/api/submissions',submitroute);
+
+app.get("/",(req,res)=>{
+    res.status(200).json({message: "Backend is running successfully"});
+})
+
 app.listen(port, ()=>{
     console.log(`The server is running on port ${port}`);
 });
