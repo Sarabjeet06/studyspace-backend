@@ -13,7 +13,7 @@ const app=express();
 const port = 3001;
 
 var corsOptions = {
-    origin: ['http://localhost:3000/' , 'https://studyspace-frontend.vercel.app/'],
+    origin: ['http://localhost:3000/' , 'https://studyspace-frontend.vercel.app'],
     optionsSuccessStatus: 200
 }
 app.use(cors(corsOptions))
